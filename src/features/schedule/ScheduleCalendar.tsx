@@ -1,10 +1,31 @@
 import React, { useState } from 'react';
-import { DayPicker, type DateRange } from 'react-day-picker';
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay } from 'date-fns';
+import { DayPicker } from 'react-day-picker';
+import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
-import type { ScheduleException, ScheduleBlock, CalendarDayInfo, TimeSlot } from '../types/schedule';
-import { STANDARD_TIME_SLOTS } from '../types/schedule';
+import type { ScheduleException, ScheduleBlock, CalendarDayInfo } from '../../types/schedule';
+import { STANDARD_TIME_SLOTS } from '../../types/schedule';
 import { Modal } from '../../components/Modal';
+
+/**
+ * Ячейка дня календаря.
+ * Модификаторы в v8 доступны только через хук useActiveModifiers,
+ * поэтому статус дня вычисляется тем же способом, что и для подсветки.
+ */
+const CustomDay: React.FC<{
+  date: Date;
+  getDayStatus: (date: Date) => CalendarDayInfo;
+}> = ({ date, getDayStatus }) => {
+  const info = getDayStatus(date);
+
+  return (
+    <div className="flex flex-col items-center justify-center p-2 h-full">
+      <span className="text-sm">{format(date, 'd')}</span>
+      {info.status === 'regular' && info.isOpen && (
+        <div className="text-xs">09:00 - 18:00</div>
+      )}
+    </div>
+  );
+};
 
 /**
  * Интерфейс пропсов для компонента календаря расписания
@@ -82,13 +103,6 @@ export const ScheduleCalendar: React.FC<ScheduleCalendarProps> = ({
   };
 
   /**
-   * Открывает модальное окно для выбранного действия
-   */
-  const openActionModal = (type: 'exception' | 'block') => {
-    setActionType(type);
-  };
-
-  /**
    * Закрывает модальные окна
    */
   const closeModal = () => {
@@ -109,7 +123,9 @@ export const ScheduleCalendar: React.FC<ScheduleCalendarProps> = ({
       <DayPicker
         mode="single"
         selected={selectedDate || undefined}
-        onSelect={handleDayClick}
+        onSelect={(day) => {
+          if (day) handleDayClick(day);
+        }}
         month={new Date(currentYear, currentMonth - 1)}
         locale={ru}
         modifiers={{
@@ -153,22 +169,9 @@ export const ScheduleCalendar: React.FC<ScheduleCalendarProps> = ({
           },
         }}
         components={{
-          Day: ({ day, modifiers }) => {
-            const info = getDayStatus(day);
-            
-            // Отображение времени работы для обычных дней
-            let timeDisplay = null;
-            if (modifiers.regular && info.isOpen) {
-              timeDisplay = <div className="text-xs">09:00 - 18:00</div>;
-            }
-
-            return (
-              <div className="flex flex-col items-center justify-center p-2 h-full">
-                <span className="text-sm">{format(day, 'd')}</span>
-                {timeDisplay}
-              </div>
-            );
-          },
+          // В react-day-picker v8 DayProps содержит только date и displayMonth:
+          // модификаторы не передаются пропсом, их получают через useActiveModifiers.
+          Day: ({ date }) => <CustomDay date={date} getDayStatus={getDayStatus} />,
         }}
       />
 

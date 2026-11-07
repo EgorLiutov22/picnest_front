@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { useSchedule } from '../../hooks/useSchedule';
 import { MonthNavigation } from './MonthNavigation';
 import { ScheduleCalendar } from './ScheduleCalendar';
 import { ScheduleList } from './ScheduleList';

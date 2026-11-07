@@ -166,7 +166,7 @@ const LoadingState = () => (
  * Компонент состояния ошибки
  */
 interface ErrorStateProps {
-  error: string;
+  error?: string;
   onRetry: () => void;
 }
 
@@ -175,7 +175,7 @@ const ErrorState: React.FC<ErrorStateProps> = ({ error, onRetry }) => (
     <svg className="mx-auto h-12 w-12 text-red-500 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
     </svg>
-    <p className="text-gray-600 mb-4">Ошибка загрузки заказов</p>
+    <p className="text-gray-600 mb-4">{error || 'Ошибка загрузки заказов'}</p>
     <button
       onClick={onRetry}
       className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"

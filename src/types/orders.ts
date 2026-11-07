@@ -130,23 +130,22 @@ export interface BookingFormData extends CreateOrderRequest {
 }
 
 /**
- * Схема полной валидации данных формы бронирования (Zod)
+ * Схема полной валидации данных формы бронирования (Zod).
+ * CreateOrderRequestSchema — ZodEffects (из-за .refine), у него нет .extend(),
+ * поэтому поля формы описаны отдельной схемой.
  */
-export const BookingFormDataSchema: z.ZodType<BookingFormData> = CreateOrderRequestSchema.extend({
+export const BookingFormDataSchema = z.object({
+  room_id: z.string().min(1, 'Выберите комнату/зал'),
+  start_time: z.string().min(1, 'Укажите время начала'),
+  end_time: z.string().min(1, 'Укажите время окончания'),
+  total_price: z.number().positive('Общая стоимость должна быть положительной'),
+  customer_name: z.string().optional(),
+  customer_email: z.string().email('Некорректный email').optional(),
+  customer_phone: z.string().optional(),
+  notes: z.string().optional(),
   booking_date: z.string().min(1, 'Выберите дату'),
   selected_slot_id: z.string().min(1, 'Выберите временной слот'),
-}).refine(
-  (data) => {
-    // Проверка что дата и время начала совпадают
-    const datePart = data.booking_date;
-    const timeStartPart = data.start_time.substring(0, 5); // HH:mm
-    return `${datePart}T${timeStartPart}` === new Date(`${datePart}T${timeStartPart}`).toISOString().substring(0, 16);
-  },
-  {
-    message: 'Некорректная дата или время',
-    path: ['start_time'],
-  }
-);
+});
 
 /**
  * Интерфейс для выбора комнаты

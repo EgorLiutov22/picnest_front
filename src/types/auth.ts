@@ -1,138 +1,104 @@
 import { z } from 'zod';
 
 /**
- * Типы данных для модуля аутентификации
+ * Типы данных для модуля аутентификации.
+ * Структуры повторяют Pydantic-схемы бэкенда (app/schemas/user.py).
  */
 
 /**
- * Роли пользователей в системе
+ * Роли пользователей в системе (совпадают с бэкендом).
  */
-export type UserRole = 'photographer' | 'studio' | 'admin';
+export const UserRoleSchema = z.enum(['client', 'photographer', 'studio']);
+
+export type UserRole = z.infer<typeof UserRoleSchema>;
 
 /**
- * Схема валидации роли пользователя (Zod)
+ * Профиль пользователя — соответствует UserResponse бэкенда.
+ * Тип выводится из схемы, чтобы не расходиться с ней.
  */
-export const UserRoleSchema: z.ZodEnum<[UserRole, ...UserRole[]]> = z.enum([
-  'photographer',
-  'studio',
-  'admin',
-]);
-
-/**
- * Интерфейс профиля пользователя
- * Зеркально отражает Pydantic модель User в бэкенде
- */
-export interface User {
-  id: string;
-  email: string;
-  name: string;
-  role: UserRole;
-  avatar_url?: string | null;
-  created_at: string;
-  updated_at: string;
-}
-
-/**
- * Схема валидации профиля пользователя (Zod)
- */
-export const UserSchema: z.ZodType<User> = z.object({
+export const UserSchema = z.object({
   id: z.string(),
-  email: z.string().email(),
-  name: z.string(),
+  email: z.string(),
+  first_name: z.string().nullable(),
+  last_name: z.string().nullable(),
+  phone: z.string().nullable(),
   role: UserRoleSchema,
-  avatar_url: z.string().url().nullable().optional(),
-  created_at: z.string().datetime(),
-  updated_at: z.string().datetime(),
+  status: z.string(),
+  city: z.string().nullable(),
+  timezone: z.string(),
+  is_active: z.boolean(),
+  created_at: z.string(),
+  updated_at: z.string(),
 });
 
-/**
- * Интерфейс запроса для регистрации
- */
-export interface RegisterRequest {
-  email: string;
-  password: string;
-  name: string;
-  role: UserRole;
-}
+export type User = z.infer<typeof UserSchema>;
 
 /**
- * Схема валидации запроса на регистрацию (Zod)
+ * Запрос на регистрацию — соответствует UserCreate бэкенда.
  */
-export const RegisterRequestSchema: z.ZodType<RegisterRequest> = z.object({
+export const RegisterRequestSchema = z.object({
   email: z.string().email('Некорректный email'),
   password: z
     .string()
     .min(8, 'Пароль должен содержать минимум 8 символов')
-    .regex(/[A-Z]/, 'Пароль должен содержать хотя бы одну заглавную букву')
-    .regex(/[a-z]/, 'Пароль должен содержать хотя бы одну строчную букву')
-    .regex(/[0-9]/, 'Пароль должен содержать хотя бы одну цифру'),
-  name: z.string().min(1, 'Имя обязательно для заполнения'),
+    .max(72, 'Пароль должен быть не длиннее 72 символов'),
+  first_name: z.string().min(1, 'Имя обязательно для заполнения'),
+  last_name: z.string().min(1, 'Фамилия обязательна для заполнения'),
   role: UserRoleSchema,
 });
 
-/**
- * Интерфейс запроса для входа в систему
- */
-export interface LoginRequest {
-  email: string;
-  password: string;
-}
+export type RegisterRequest = z.infer<typeof RegisterRequestSchema>;
 
 /**
- * Схема валидации запроса на вход (Zod)
+ * Запрос на вход.
+ * Бэкенд принимает и JSON, и form-urlencoded; поле называется username.
  */
-export const LoginRequestSchema: z.ZodType<LoginRequest> = z.object({
-  email: z.string().email('Некорректный email'),
+export const LoginRequestSchema = z.object({
+  username: z.string().email('Некорректный email'),
   password: z.string().min(1, 'Пароль обязателен для заполнения'),
 });
 
-/**
- * Интерфейс ответа от сервера после успешной авторизации
- */
-export interface AuthResponse {
-  access_token: string;
-  refresh_token: string;
-  token_type: 'Bearer';
-}
+export type LoginRequest = z.infer<typeof LoginRequestSchema>;
 
 /**
- * Схема валидации ответа от сервера (Zod)
+ * Ответ сервера после успешной авторизации.
  */
-export const AuthResponseSchema: z.ZodType<AuthResponse> = z.object({
+export const AuthResponseSchema = z.object({
   access_token: z.string(),
   refresh_token: z.string(),
-  token_type: z.literal('Bearer'),
+  token_type: z.string(),
 });
 
-/**
- * Интерфейс запроса для обновления токена
- */
-export interface RefreshTokenRequest {
-  refresh_token: string;
-}
+export type AuthResponse = z.infer<typeof AuthResponseSchema>;
 
 /**
- * Схема валидации запроса на обновление токена (Zod)
+ * Запрос на обновление токена.
  */
-export const RefreshTokenRequestSchema: z.ZodType<RefreshTokenRequest> = z.object({
+export const RefreshTokenRequestSchema = z.object({
   refresh_token: z.string(),
 });
 
+export type RefreshTokenRequest = z.infer<typeof RefreshTokenRequestSchema>;
+
 /**
- * Тип для ошибок валидации формы регистрации
+ * Ошибки валидации формы регистрации.
  */
 export interface RegistrationErrors {
   email?: string;
   password?: string;
-  name?: string;
+  first_name?: string;
+  last_name?: string;
   role?: string;
+  detail?: string;
 }
 
 /**
- * Тип для ошибок валидации формы входа
+ * Ошибки валидации формы входа.
  */
 export interface LoginErrors {
+  general?: string;
+  username?: string;
   email?: string;
   password?: string;
-  general?: string; // Ошибка от сервера при неверных учетных данных
+  detail?: string;
 }

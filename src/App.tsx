@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import { useAuthStore } from './store/authStore';
+import { ProtectedRoute } from './components/ProtectedRoute';
 
 // Компоненты страниц (заглушки)
 const HomePage = () => (
@@ -95,9 +96,9 @@ const RegisterPage = () => (
             id="role"
             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all bg-white"
           >
+            <option value="client">Клиент</option>
             <option value="photographer">Фотограф</option>
             <option value="studio">Студия</option>
-            <option value="admin">Администратор</option>
           </select>
         </div>
         <button
@@ -143,31 +144,6 @@ const StudioDashboardPage = () => (
         <li>Средняя оценка: 4.8/5.0</li>
         <li>Активные фотографы: 25</li>
       </ul>
-    </div>
-  </div>
-);
-
-const AdminDashboardPage = () => (
-  <div className="p-8">
-    <h1 className="text-3xl font-bold mb-4 text-red-700">Панель администратора</h1>
-    <p className="text-gray-600 mb-6">Только для администраторов системы</p>
-    <div className="bg-white rounded-lg shadow-md p-6 mt-8">
-      <h2 className="text-xl font-semibold mb-4 text-red-600">Управление пользователями</h2>
-      <ul className="list-disc list-inside space-y-2 text-gray-700">
-        <li>Всего пользователей: 1,234</li>
-        <li>Фотографов: 856</li>
-        <li>Студий: 98</li>
-        <li>Активных сегодня: 342</li>
-      </ul>
-    </div>
-  </div>
-);
-
-const UnauthorizedPage = () => (
-  <div className="flex items-center justify-center min-h-screen bg-gray-50">
-    <div className="text-center p-8 bg-white rounded-lg shadow-md max-w-md">
-      <h1 className="text-3xl font-bold text-red-600 mb-4">Доступ запрещён</h1>
-      <p className="text-gray-700 mb-6">У вас нет прав для доступа к этой странице.</p>
     </div>
   </div>
 );
@@ -271,16 +247,6 @@ function App() {
             }
           />
 
-          {/* Защищённый маршрут только для администраторов */}
-          <Route
-            path="/admin/*"
-            element={
-              <ProtectedRoute requiredRole="admin">
-                <AdminDashboardPage />
-              </ProtectedRoute>
-            }
-          />
-
           {/* Маршрут с явной проверкой роли (если requiredRole не совпадает, рендерит Unauthorized) */}
           <Route path="/photographer/*" element={<PhotographerRoute />} />
 
@@ -296,7 +262,8 @@ function App() {
  * Отдельный роут для фотографов с явной проверкой роли
  */
 const PhotographerRoute = () => {
-  const { isAuthenticated, role } = useAuthStore();
+  const { isAuthenticated, user } = useAuthStore();
+  const role = user?.role;
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;

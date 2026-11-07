@@ -1,12 +1,10 @@
 import { z } from 'zod';
-import apiClient from '../lib/axios';
-import tokenManager from '../lib/axios';
+import apiClient, { tokenManager } from '../lib/axios';
 import type {
   User,
   RegisterRequest,
   LoginRequest,
   AuthResponse,
-  RefreshTokenRequest,
   RegistrationErrors,
   LoginErrors,
 } from '../types/auth';
@@ -14,7 +12,6 @@ import {
   UserSchema,
   RegisterRequestSchema,
   LoginRequestSchema,
-  AuthResponseSchema,
   RefreshTokenRequestSchema,
 } from '../types/auth';
 

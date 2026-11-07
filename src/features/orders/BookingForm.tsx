@@ -1,11 +1,10 @@
 import React, { useState } from 'react';
-import { useForm, Controller, FieldErrorsField } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { format, parseISO } from 'date-fns';
-import { ru } from 'date-fns/locale';
-import type { CreateOrderRequest, RoomSelection } from '../types/orders';
-import { CreateOrderRequestSchema } from '../types/orders';
+import { format } from 'date-fns';
+import type { CreateOrderRequest, RoomSelection } from '../../types/orders';
+import { CreateOrderRequestSchema } from '../../types/orders';
 
 /**
  * Интерфейс пропсов для компонента BookingForm
@@ -31,7 +30,6 @@ export const BookingForm: React.FC<BookingFormProps> = ({ availableRooms, defaul
    */
   const {
     register,
-    control,
     handleSubmit,
     setValue,
     watch,

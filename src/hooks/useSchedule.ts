@@ -17,7 +17,7 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000
 const SCHEDULE_KEYS = {
   all: ['schedules'] as const,
   templates: () => [...SCHEDULE_KEYS.all, 'templates'] as const,
-  exceptions: (year: number, month: number) => 
+  exceptions: (year?: number, month?: number) =>
     [...SCHEDULE_KEYS.all, 'exceptions', year, month] as const,
   blocks: () => [...SCHEDULE_KEYS.all, 'blocks'] as const,
 } as const;
@@ -109,13 +109,12 @@ export const useCreateBlock = () => {
       const response = await axios.post(`${API_BASE_URL}/schedules/blocks`, data);
       return response.data;
     },
-    onSuccess: (_, variables) => {
+    onSuccess: () => {
       // Инвалидируем кэш блоков для текущего месяца
-      const date = new Date(variables.date);
       queryClient.invalidateQueries({
         queryKey: SCHEDULE_KEYS.blocks(),
       });
-      
+
       toast.success('Слот успешно заблокирован');
     },
     onError: () => {
@@ -134,12 +133,12 @@ export const useDeleteException = () => {
     mutationFn: async (exceptionId) => {
       await axios.delete(`${API_BASE_URL}/schedules/exceptions/${exceptionId}`);
     },
-    onSuccess: (_, exceptionId) => {
+    onSuccess: () => {
       // Инвалидируем кэш исключений
       queryClient.invalidateQueries({
         queryKey: SCHEDULE_KEYS.exceptions(),
       });
-      
+
       toast.success('Исключение удалено');
     },
     onError: () => {
@@ -158,12 +157,12 @@ export const useDeleteBlock = () => {
     mutationFn: async (blockId) => {
       await axios.delete(`${API_BASE_URL}/schedules/blocks/${blockId}`);
     },
-    onSuccess: (_, blockId) => {
+    onSuccess: () => {
       // Инвалидируем кэш блоков
       queryClient.invalidateQueries({
         queryKey: SCHEDULE_KEYS.blocks(),
       });
-      
+
       toast.success('Слот разблокирован');
     },
     onError: () => {
@@ -185,10 +184,10 @@ export interface UseScheduleResult {
   errorTemplates: Error | null;
   errorExceptions: Error | null;
   errorBlocks: Error | null;
-  createException: (data: CreateExceptionRequest) => Promise<void>;
-  createBlock: (data: CreateBlockRequest) => Promise<void>;
-  deleteException: (exceptionId: string) => Promise<void>;
-  deleteBlock: (blockId: string) => Promise<void>;
+  createException: (data: CreateExceptionRequest) => void;
+  createBlock: (data: CreateBlockRequest) => void;
+  deleteException: (exceptionId: string) => void;
+  deleteBlock: (blockId: string) => void;
 }
 
 /**

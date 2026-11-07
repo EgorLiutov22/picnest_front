@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import type { User } from '../types/auth';
-import tokenManager from '../lib/axios';
+import { tokenManager } from '../lib/axios';
 
 /**
  * Интерфейс состояния аутентификации
@@ -97,13 +97,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   hasRequiredRole: (requiredRole) => {
     const { user } = get();
-
-    // Админ имеет доступ ко всем ресурсам
-    if (user?.role === 'admin') {
-      return true;
-    }
-
-    // Проверяем соответствие роли
+    // admin в модели бэкенда нет: роли client/photographer/studio
     return user?.role === requiredRole;
   },
 }));
@@ -116,12 +110,14 @@ export const useAuth = () => {
 
   return {
     ...store,
-    /** Текущая роль пользователя (undefined если не авторизован) */
-    role: store.user?.role,
     /** Email пользователя (undefined если не авторизован) */
     email: store.user?.email,
-    /** Имя пользователя (undefined если не авторизован) */
-    name: store.user?.name,
+    /** Полное имя пользователя (undefined если не авторизован) */
+    name: [store.user?.first_name, store.user?.last_name]
+      .filter(Boolean)
+      .join(' ') || undefined,
+    /** Роль пользователя */
+    role: store.user?.role,
   };
 };
 

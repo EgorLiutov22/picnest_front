@@ -5,6 +5,27 @@ import { z } from 'zod';
  */
 
 /**
+ * Интерфейс слота в недельном шаблоне
+ */
+export interface WeeklyScheduleSlot {
+  day_of_week: number; // 0 = воскресенье, 1 = понедельник, ..., 6 = суббота
+  is_open: boolean;    // true = рабочий день, false = выходной
+  open_time?: string | null;   // время открытия (HH:mm)
+  close_time?: string | null;  // время закрытия (HH:mm)
+}
+
+/**
+ * Схема валидации слота недельного расписания (Zod).
+ * Объявлена до ScheduleTemplateSchema: та ссылается на неё.
+ */
+export const WeeklyScheduleSlotSchema = z.object({
+  day_of_week: z.number().int().min(0).max(6),
+  is_open: z.boolean(),
+  open_time: z.string().regex(/^\d{2}:\d{2}$/, 'Неверный формат времени (HH:mm)').nullable().optional(),
+  close_time: z.string().regex(/^\d{2}:\d{2}$/, 'Неверный формат времени (HH:mm)').nullable().optional(),
+}) satisfies z.ZodType<WeeklyScheduleSlot>;
+
+/**
  * Интерфейс недельного шаблона расписания
  */
 export interface ScheduleTemplate {
@@ -20,35 +41,15 @@ export interface ScheduleTemplate {
 /**
  * Схема валидации шаблона расписания (Zod)
  */
-export const ScheduleTemplateSchema: z.ZodType<ScheduleTemplate> = z.object({
+export const ScheduleTemplateSchema = z.object({
   id: z.string(),
   name: z.string(),
   description: z.string().nullable().optional(),
   is_active: z.boolean(),
   slots: z.array(WeeklyScheduleSlotSchema),
-  created_at: z.string().datetime(),
-  updated_at: z.string().datetime(),
-});
-
-/**
- * Интерфейс слота в недельном шаблоне
- */
-export interface WeeklyScheduleSlot {
-  day_of_week: number; // 0 = воскресенье, 1 = понедельник, ..., 6 = суббота
-  is_open: boolean;    // true = рабочий день, false = выходной
-  open_time?: string | null;   // время открытия (HH:mm)
-  close_time?: string | null;  // время закрытия (HH:mm)
-}
-
-/**
- * Схема валидации слота недельного расписания (Zod)
- */
-export const WeeklyScheduleSlotSchema: z.ZodType<WeeklyScheduleSlot> = z.object({
-  day_of_week: z.number().int().min(0).max(6),
-  is_open: z.boolean(),
-  open_time: z.string().regex(/^\d{2}:\d{2}$/, 'Неверный формат времени (HH:mm)').nullable().optional(),
-  close_time: z.string().regex(/^\d{2}:\d{2}$/, 'Неверный формат времени (HH:mm)').nullable().optional(),
-});
+  created_at: z.string(),
+  updated_at: z.string(),
+}) satisfies z.ZodType<ScheduleTemplate>;
 
 /**
  * Интерфейс исключения в расписании (выходной или кастомное время)

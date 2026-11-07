@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
-import { useAuthStore, type User } from '../store/authStore';
+import { useAuthStore } from '../store/authStore';
+import type { User } from '../types/auth';
 import { getCurrentUser } from '../services/auth';
 
 /**
@@ -80,11 +81,6 @@ export const ProtectedRoute = ({ requiredRole, children }: ProtectedRouteProps) 
   const hasRequiredRole = () => {
     // Если requiredRole не задана, проверяем только авторизацию
     if (!requiredRole) {
-      return true;
-    }
-
-    // Админ имеет доступ ко всем ресурсам
-    if (user?.role === 'admin') {
       return true;
     }
 

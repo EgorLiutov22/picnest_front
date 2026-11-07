@@ -19,8 +19,8 @@ interface TokenState {
   refreshToken: string | null;
   isRefreshing: boolean;
   failedQueue: Array<{
-    resolve: (value: AxiosResponse) => void;
-    reject: (reason?: any) => void;
+    resolve: (value: unknown) => void;
+    reject: (reason?: unknown) => void;
   }>;
 }
 
@@ -89,6 +89,7 @@ apiClient.interceptors.response.use(
         tokenState.refreshToken = refresh_token || tokenState.refreshToken;
 
         // Повторяем исходный запрос с новым токеном
+        originalRequest.headers = originalRequest.headers ?? {};
         originalRequest.headers.Authorization = `Bearer ${access_token}`;
         return apiClient(originalRequest);
       } catch (refreshError) {
