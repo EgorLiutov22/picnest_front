@@ -1,180 +1,147 @@
 import { z } from 'zod';
 
 /**
- * Типы данных для модуля бронирования и заказов
+ * Типы заказов, повторяющие Pydantic-схемы бэкенда
+ * (app/schemas/orders/schemas.py).
  */
 
-/**
- * Интерфейс заказа (бронирования) фотостудии
- */
-export interface Order {
-  id: string;
-  room_id: string;
-  start_time: string;    // ISO datetime или HH:mm
-  end_time: string;      // ISO datetime или HH:mm
-  total_price: number;
-  status: 'pending' | 'confirmed' | 'cancelled';
-  customer_name?: string | null;
-  customer_email?: string | null;
-  customer_phone?: string | null;
-  notes?: string | null;
-  created_at: string;
-  updated_at: string;
-}
+export const OrderStatusSchema = z.enum([
+  'pending_payment',
+  'confirmed',
+  'in_progress',
+  'completed',
+  'cancelled',
+  'disputed',
+]);
+
+export type OrderStatus = z.infer<typeof OrderStatusSchema>;
+
+export const OrderTypeSchema = z.enum(['photographer_only', 'studio_only', 'combined']);
+
+export type OrderType = z.infer<typeof OrderTypeSchema>;
 
 /**
- * Схема валидации заказа (Zod)
+ * Краткая карточка заказа — элемент списка (GET /api/v1/orders).
  */
-export const OrderSchema: z.ZodType<Order> = z.object({
-  id: z.string(),
-  room_id: z.string(),
+export const OrderSummarySchema = z.object({
+  id: z.number(),
+  order_type: OrderTypeSchema,
+  status: OrderStatusSchema,
+  // Decimal на бэкенде приходит строкой
+  total_price: z.string(),
+  created_at: z.string(),
+});
+
+export type OrderSummary = z.infer<typeof OrderSummarySchema>;
+
+/**
+ * Ответ списка заказов: бэкенд отдаёт объект с пагинацией, а не массив.
+ */
+export const OrdersListResponseSchema = z.object({
+  items: z.array(OrderSummarySchema),
+  total: z.number(),
+  skip: z.number(),
+  limit: z.number(),
+});
+
+export type OrdersListResponse = z.infer<typeof OrdersListResponseSchema>;
+
+/**
+ * Позиция заказа в детальном ответе.
+ */
+export const OrderItemSchema = z.object({
+  id: z.number(),
+  photographer_id: z.number().nullable().optional(),
+  photographer_service_id: z.number().nullable().optional(),
+  studio_room_id: z.number().nullable().optional(),
   start_time: z.string(),
   end_time: z.string(),
-  total_price: z.number().positive('Общая стоимость должна быть положительной'),
-  status: z.enum(['pending', 'confirmed', 'cancelled']),
-  customer_name: z.string().nullable().optional(),
-  customer_email: z.string().email('Некорректный email').nullable().optional(),
-  customer_phone: z.string().nullable().optional(),
-  notes: z.string().nullable().optional(),
-  created_at: z.string().datetime(),
-  updated_at: z.string().datetime(),
+  fixed_price: z.string(),
+  fixed_conditions: z.record(z.string(), z.unknown()).nullable().optional(),
+  studio_room_info: z
+    .object({
+      id: z.number(),
+      name: z.string(),
+      studio_title: z.string(),
+      address: z.string(),
+      fixed_price: z.string(),
+    })
+    .nullable()
+    .optional(),
+  photographer_info: z
+    .object({
+      id: z.number(),
+      display_name: z.string(),
+      service_title: z.string().nullable().optional(),
+      fixed_price: z.string(),
+    })
+    .nullable()
+    .optional(),
 });
 
-/**
- * Интерфейс запроса на создание заказа
- */
-export interface CreateOrderRequest {
-  room_id: string;
-  start_time: string;
-  end_time: string;
-  total_price: number;
-  customer_name?: string;
-  customer_email?: string;
-  customer_phone?: string;
-  notes?: string;
-}
+export type OrderItem = z.infer<typeof OrderItemSchema>;
 
 /**
- * Схема валидации запроса на создание заказа (Zod)
+ * Детальный заказ (GET /api/v1/orders/{id}).
  */
-export const CreateOrderRequestSchema: z.ZodType<CreateOrderRequest> = z.object({
-  room_id: z.string().min(1, 'Выберите комнату/зал'),
-  start_time: z.string().min(1, 'Укажите время начала'),
-  end_time: z.string().min(1, 'Укажите время окончания'),
-  total_price: z.number()
-    .positive('Общая стоимость должна быть положительной')
-    .finite('Некорректная стоимость'),
-  customer_name: z.string().optional(),
-  customer_email: z.string().email('Некорректный email').optional(),
-  customer_phone: z.string().optional(),
-  notes: z.string().optional(),
-}).refine(
-  (data) => {
-    // start_time должен быть раньше end_time
-    const startTime = new Date(`1970-01-01T${data.start_time}Z`).getTime();
-    const endTime = new Date(`1970-01-01T${data.end_time}Z`).getTime();
-    return startTime < endTime;
-  },
-  {
-    message: 'Время окончания должно быть позже времени начала',
-    path: ['end_time'],
-  }
-);
-
-/**
- * Интерфейс временного слота для бронирования
- */
-export interface BookingSlot {
-  id: string;
-  date: string;            // YYYY-MM-DD
-  startTime: string;       // HH:mm
-  endTime: string;         // HH:mm
-  isAvailable: boolean;    // доступен ли слот
-}
-
-/**
- * Интерфейс доступных временных слотов для комнаты
- */
-export interface RoomAvailability {
-  room_id: string;
-  room_name: string;
-  date: string;            // YYYY-MM-DD
-  availableSlots: BookingSlot[];
-}
-
-/**
- * Типы статусов заказа
- */
-export type OrderStatus = 'pending' | 'confirmed' | 'cancelled';
-
-/**
- * Схема валидации статуса заказа (Zod)
- */
-export const OrderStatusSchema: z.ZodType<OrderStatus> = z.enum(['pending', 'confirmed', 'cancelled']);
-
-/**
- * Интерфейс ответа от сервера после создания заказа
- */
-export interface CreateOrderResponse {
-  order: Order;
-  message?: string;
-}
-
-/**
- * Интерфейс для валидации формы бронирования
- */
-export interface BookingFormData extends CreateOrderRequest {
-  // Дополнительные поля для валидации формы
-  booking_date: string;    // Дата бронирования (YYYY-MM-DD)
-  selected_slot_id: string; // Выбранный временной слот
-}
-
-/**
- * Схема полной валидации данных формы бронирования (Zod).
- * CreateOrderRequestSchema — ZodEffects (из-за .refine), у него нет .extend(),
- * поэтому поля формы описаны отдельной схемой.
- */
-export const BookingFormDataSchema = z.object({
-  room_id: z.string().min(1, 'Выберите комнату/зал'),
-  start_time: z.string().min(1, 'Укажите время начала'),
-  end_time: z.string().min(1, 'Укажите время окончания'),
-  total_price: z.number().positive('Общая стоимость должна быть положительной'),
-  customer_name: z.string().optional(),
-  customer_email: z.string().email('Некорректный email').optional(),
-  customer_phone: z.string().optional(),
-  notes: z.string().optional(),
-  booking_date: z.string().min(1, 'Выберите дату'),
-  selected_slot_id: z.string().min(1, 'Выберите временной слот'),
+export const OrderDetailSchema = OrderSummarySchema.extend({
+  prepayment_amount: z.string(),
+  client_id: z.string().optional(),
+  items: z.array(OrderItemSchema),
+  cancellation_conditions: z.record(z.string(), z.unknown()).optional(),
 });
 
+export type OrderDetail = z.infer<typeof OrderDetailSchema>;
+
 /**
- * Интерфейс для выбора комнаты
+ * Ответ на отмену заказа.
  */
-export interface RoomSelection {
-  id: string;
+export const OrderCancelResponseSchema = z.object({
+  order_id: z.number(),
+  status: OrderStatusSchema,
+  refund_amount: z.string(),
+  refund_percentage: z.number(),
+  cancellation_reason: z.string().nullable().optional(),
+  cancelled_at: z.string(),
+});
+
+export type OrderCancelResponse = z.infer<typeof OrderCancelResponseSchema>;
+
+/**
+ * Зал студии для выбора в форме бронирования.
+ * Отдельный эндпоинт списка залов пока не реализован, поэтому данные
+ * передаются в компонент пропсом.
+ */
+export interface StudioRoomOption {
+  id: number;
   name: string;
-  hourly_rate?: number;     // почасовая ставка
+  price_per_hour: string;
+  studio_title?: string;
 }
 
 /**
- * Схема валидации выбора комнаты (Zod)
+ * Запрос на создание заказа — соответствует OrderCreate бэкенда.
+ * Бэкенд ожидает время в ISO 8601 с часовым поясом.
  */
-export const RoomSelectionSchema: z.ZodType<RoomSelection> = z.object({
-  id: z.string(),
-  name: z.string(),
-  hourly_rate: z.number().optional(),
-});
+export interface CreateOrderPayload {
+  order_type: 'studio_only';
+  items: Array<{
+    studio_room_id: number;
+    start_time: string;
+    end_time: string;
+  }>;
+  prepayment_amount: string;
+  cancellation_conditions?: Record<string, unknown>;
+}
 
 /**
- * Интерфейс ошибки валидации формы
+ * Значения полей формы бронирования до преобразования в CreateOrderPayload.
  */
-export interface FormValidationErrors {
-  room_id?: string;
-  start_time?: string;
-  end_time?: string;
-  total_price?: string;
-  customer_name?: string;
-  customer_email?: string;
-  customer_phone?: string;
-  notes?: string;
+export interface BookingFormValues {
+  studio_room_id: number;
+  booking_date: string; // YYYY-MM-DD
+  start_time: string; // HH:mm
+  end_time: string; // HH:mm
+  prepayment_amount: string;
 }
+

@@ -1,185 +1,117 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import { useOrders } from '../../hooks/useOrders';
+import { useAuthStore } from '../../store/authStore';
+import { PageLayout } from '../../components/Layout';
 import BookingForm from './BookingForm';
 import OrdersList from './OrdersList';
-import type { RoomSelection } from '../../types/orders';
+import type { StudioRoomOption } from '../../types/orders';
 
-/**
- * Интерфейс пропсов для страницы заказов
- */
 interface OrdersPageProps {
-  /** Список доступных комнат/залов (для формы бронирования) */
-  availableRooms: RoomSelection[];
+  availableRooms: StudioRoomOption[];
 }
 
 /**
- * Страница управления заказами/бронированиями
- * Отображает форму создания нового бронирования и список существующих заказов
+ * Личный кабинет клиента: свои бронирования и форма создания нового.
+ * Список — GET /api/v1/orders по токену, отмена — POST /orders/{id}/cancel.
  */
 export const OrdersPage: React.FC<OrdersPageProps> = ({ availableRooms }) => {
-  const navigate = useNavigate();
-  
-  // Используем хук для работы с заказами
-  const { ordersList, isLoadingOrders, errorOrders } = useOrders();
+  const [params, setParams] = useSearchParams();
+  const showForm = params.get('new') === '1';
+  const setShowForm = (v: boolean) => setParams(v ? { new: '1' } : {}, { replace: true });
 
-  /**
-   * Обработчик отмены заказа
-   */
-  const handleCancelOrder = async (orderId: string) => {
-    if (window.confirm('Вы уверены, что хотите отменить это бронирование?')) {
-      console.log(`Отмена заказа ${orderId}`);
-      // TODO: Вызов мутации для отмены заказа
-      // await cancelOrder(orderId);
+  const user = useAuthStore((s) => s.user);
+  const { orders, total, isLoading, error, refetch, cancelOrder, isCancelling } = useOrders();
+
+  const handleCancelOrder = (orderId: number) => {
+    if (window.confirm('Отменить это бронирование? Сумма возврата зависит от времени до начала съёмки.')) {
+      cancelOrder({ orderId });
     }
   };
 
-  /**
-   * Обработчик клика на "Создать новое бронирование"
-   */
-  const handleNewBooking = () => {
-    navigate('/studio/book');
-  };
+  const activeCount = orders.filter((o) => o.status === 'pending_payment' || o.status === 'confirmed').length;
+  const cancelledCount = orders.filter((o) => o.status === 'cancelled').length;
+  const firstName = user?.first_name;
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      {/* Верхняя панель с заголовком и кнопкой */}
-      <div className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">Бронирования</h1>
-              <p className="mt-2 text-gray-600">Управление заказами и создание новых бронирований</p>
-            </div>
-            <button
-              onClick={handleNewBooking}
-              className="px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors flex items-center gap-2"
-            >
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-              Создать бронирование
-            </button>
+    <PageLayout className="bg-surface">
+      <section className="border-b border-line bg-white">
+        <div className="container-pn flex flex-col gap-6 py-10 md:flex-row md:items-end md:justify-between">
+          <div>
+            <p className="eyebrow">Личный кабинет</p>
+            <h1 className="mt-2 text-[32px] font-bold leading-[1.1] tracking-tighter2 text-ink md:text-[40px]">
+              {firstName ? `${firstName}, ваши бронирования` : 'Ваши бронирования'}
+            </h1>
           </div>
+          <button type="button" onClick={() => setShowForm(!showForm)} className="btn-primary self-start md:self-auto">
+            {showForm ? 'Скрыть форму' : '+ Новое бронирование'}
+          </button>
         </div>
-      </div>
+      </section>
 
-      {/* Основной контент */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
-          {/* Левая колонка - Форма бронирования */}
-          <div className="xl:col-span-2">
-            <BookingForm availableRooms={availableRooms} />
-          </div>
+      <div className="container-pn flex flex-col gap-8 py-10">
+        {showForm && <BookingForm availableRooms={availableRooms} onCreated={() => setShowForm(false)} />}
 
-          {/* Правая колонка - Список заказов */}
-          <div className="xl:col-span-1">
-            {isLoadingOrders ? (
+        <div className="grid gap-8 lg:grid-cols-[1fr_300px]">
+          <div>
+            {isLoading ? (
               <LoadingState />
-            ) : errorOrders ? (
-              <ErrorState error={errorOrders.message} onRetry={() => window.location.reload()} />
+            ) : error ? (
+              <ErrorState message={error.message} onRetry={() => refetch()} />
             ) : (
-              <OrdersList 
-                orders={ordersList} 
+              <OrdersList
+                orders={orders}
                 onCancelOrder={handleCancelOrder}
+                isCancelling={isCancelling}
+                onCreate={() => setShowForm(true)}
               />
             )}
-
-            {/* Информация */}
-            <div className="mt-6 bg-blue-50 border-l-4 border-blue-500 p-4 rounded">
-              <div className="flex items-start">
-                <svg className="w-5 h-5 text-blue-500 mt-0.5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <p className="text-sm text-blue-700">
-                  Новые бронирования создаются автоматически. 
-                  Администратор подтвердит их в ближайшее время.
-                </p>
-              </div>
-            </div>
           </div>
-        </div>
 
-        {/* Статистика */}
-        <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6">
-          <StatCard 
-            title="Всего бронирований" 
-            value={ordersList.length.toString()} 
-            icon={<svg className="w-6 h-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>}
-          />
-          <StatCard 
-            title="Активных" 
-            value={ordersList.filter(o => o.status === 'confirmed' || o.status === 'pending').length.toString()} 
-            icon={<svg className="w-6 h-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>}
-          />
-          <StatCard 
-            title="Отменено" 
-            value={ordersList.filter(o => o.status === 'cancelled').length.toString()} 
-            icon={<svg className="w-6 h-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>}
-          />
+          <aside className="flex flex-col gap-4">
+            <div className="grid grid-cols-3 gap-3 lg:grid-cols-1">
+              <Stat label="Всего" value={total} />
+              <Stat label="Активных" value={activeCount} accent />
+              <Stat label="Отменено" value={cancelledCount} />
+            </div>
+
+            <div className="rounded-panel bg-ink p-6 text-white">
+              <p className="text-[13px] font-semibold text-white/70">Условия отмены</p>
+              <ul className="mt-3 flex flex-col gap-2.5 text-sm leading-[1.55] text-white/85">
+                <li>100% возврат — за 24 часа и более до начала.</li>
+                <li>Бронь менее чем за сутки — 15 минут на отмену с возвратом.</li>
+                <li>Неоплаченный заказ отменяется в любой момент.</li>
+              </ul>
+            </div>
+          </aside>
         </div>
       </div>
-
-      {/* Подвал */}
-      <footer className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <p className="text-center text-sm text-gray-500">
-          Если у вас возникли вопросы, обратитесь в службу поддержки.
-        </p>
-      </footer>
-    </div>
+    </PageLayout>
   );
 };
 
-/**
- * Компонент статистической карточки
- */
-interface StatCardProps {
-  title: string;
-  value: string;
-  icon: React.ReactNode;
-}
-
-const StatCard: React.FC<StatCardProps> = ({ title, value, icon }) => (
-  <div className="bg-white rounded-lg shadow-md p-6">
-    <div className="flex items-center justify-between mb-2">
-      {icon}
-    </div>
-    <p className="text-sm text-gray-600">{title}</p>
-    <p className="text-3xl font-bold text-gray-900 mt-1">{value}</p>
+const Stat: React.FC<{ label: string; value: number; accent?: boolean }> = ({ label, value, accent }) => (
+  <div className="card p-5">
+    <p className="text-sm text-muted">{label}</p>
+    <p className={`mt-1 text-[28px] font-bold leading-none tracking-tighter2 ${accent ? 'text-brand' : 'text-ink'}`}>
+      {value}
+    </p>
   </div>
 );
 
-/**
- * Компонент состояния загрузки
- */
 const LoadingState = () => (
-  <div className="bg-white rounded-lg shadow-md p-8 text-center">
-    <svg className="animate-spin h-12 w-12 text-blue-600 mx-auto mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-    </svg>
-    <p className="text-gray-600">Загрузка заказов...</p>
+  <div className="flex flex-col gap-4" aria-busy="true" aria-label="Загрузка заказов">
+    {[0, 1, 2].map((i) => (
+      <div key={i} className="card h-[104px] animate-pulse bg-white" />
+    ))}
   </div>
 );
 
-/**
- * Компонент состояния ошибки
- */
-interface ErrorStateProps {
-  error?: string;
-  onRetry: () => void;
-}
-
-const ErrorState: React.FC<ErrorStateProps> = ({ error, onRetry }) => (
-  <div className="bg-white rounded-lg shadow-md p-8 text-center">
-    <svg className="mx-auto h-12 w-12 text-red-500 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-    </svg>
-    <p className="text-gray-600 mb-4">{error || 'Ошибка загрузки заказов'}</p>
-    <button
-      onClick={onRetry}
-      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-    >
+const ErrorState: React.FC<{ message?: string; onRetry: () => void }> = ({ message, onRetry }) => (
+  <div className="card flex flex-col items-center gap-3 px-6 py-12 text-center">
+    <h3 className="text-xl font-bold text-ink">Не удалось загрузить заказы</h3>
+    <p className="text-sm text-muted">{message || 'Неизвестная ошибка'}</p>
+    <button type="button" onClick={onRetry} className="btn-primary mt-2">
       Повторить
     </button>
   </div>

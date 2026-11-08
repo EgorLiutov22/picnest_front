@@ -1,12 +1,11 @@
 import { z } from 'zod';
 import apiClient, { tokenManager } from '../lib/axios';
+import { getApiErrorMessage } from '../lib/apiError';
 import type {
   User,
   RegisterRequest,
   LoginRequest,
   AuthResponse,
-  RegistrationErrors,
-  LoginErrors,
 } from '../types/auth';
 import {
   UserSchema,
@@ -40,21 +39,9 @@ export const register = async (data: RegisterRequest): Promise<User> => {
     return getCurrentUser();
   } catch (error) {
     if (error instanceof z.ZodError) {
-      throw new Error('Ошибка валидации данных: ' + error.message);
+      throw new Error('Проверьте правильность заполнения полей');
     }
-
-    const axiosError = error as { response?: { data?: RegistrationErrors; status?: number } };
-    const serverErrors = axiosError.response?.data as RegistrationErrors | undefined;
-
-    if (serverErrors) {
-      throw new Error(
-        Object.values(serverErrors)
-          .filter(Boolean)
-          .join('\n') || 'Ошибка регистрации'
-      );
-    }
-
-    throw new Error('Ошибка при регистрации. Попробуйте позже');
+    throw new Error(getApiErrorMessage(error, 'Не удалось зарегистрироваться'));
   }
 };
 
@@ -78,26 +65,9 @@ export const login = async (credentials: LoginRequest): Promise<User> => {
     return getCurrentUser();
   } catch (error) {
     if (error instanceof z.ZodError) {
-      throw new Error('Ошибка валидации данных: ' + error.message);
+      throw new Error('Введите корректный email и пароль');
     }
-
-    const axiosError = error as { response?: { data?: LoginErrors; status?: number } };
-    const serverErrors = axiosError.response?.data as LoginErrors | undefined;
-
-    // Обработка ошибок от сервера (например, неверный email или пароль)
-    if (serverErrors?.general) {
-      throw new Error(serverErrors.general);
-    }
-
-    if (serverErrors?.email || serverErrors?.password) {
-      throw new Error(
-        [serverErrors.email, serverErrors.password]
-          .filter(Boolean)
-          .join('\n') || 'Ошибка входа'
-      );
-    }
-
-    throw new Error('Ошибка при входе. Попробуйте позже');
+    throw new Error(getApiErrorMessage(error, 'Не удалось войти'));
   }
 };
 

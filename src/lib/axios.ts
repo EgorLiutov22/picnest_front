@@ -55,8 +55,18 @@ apiClient.interceptors.response.use(
   async (error: AxiosError) => {
     const originalRequest = error.config as AxiosRequestConfig & { _retry?: boolean };
 
+    // 401 от входа, регистрации и самого refresh — это ответ по существу
+    // (неверный пароль, протухший refresh), а не повод обновлять токен.
+    // Без этой проверки неверный пароль запускал refresh, тот падал и
+    // перезагружал страницу на /login, стирая сообщение об ошибке.
+    const url = originalRequest?.url ?? '';
+    const isAuthEndpoint = /\/auth\/(login|register|refresh)$/.test(url);
+
+    // Без refresh-токена обновлять нечего: отдаём 401 вызывающему коду
+    const canRefresh = Boolean(tokenState.refreshToken);
+
     // Обработка ошибки 401 - попытка обновления токена
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    if (error.response?.status === 401 && !originalRequest._retry && !isAuthEndpoint && canRefresh) {
       // Если уже пытаемся обновить токен, добавляем запрос в очередь
       if (tokenState.isRefreshing) {
         return new Promise((resolve, reject) => {

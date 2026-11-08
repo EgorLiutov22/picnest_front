@@ -93,9 +93,9 @@ export const ProtectedRoute = ({ requiredRole, children }: ProtectedRouteProps) 
    */
   if (isLoading || isChecking) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-50">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-        <span className="ml-3 text-gray-600">Загрузка...</span>
+      <div className="flex min-h-screen items-center justify-center gap-3 bg-surface">
+        <span className="h-10 w-10 animate-spin rounded-full border-[3px] border-brand-soft border-t-brand" />
+        <span className="text-muted">Загрузка…</span>
       </div>
     );
   }
@@ -110,17 +110,12 @@ export const ProtectedRoute = ({ requiredRole, children }: ProtectedRouteProps) 
   // Если requiredRole задана, проверяем соответствие роли пользователя
   if (!hasRequiredRole()) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-50">
-        <div className="text-center p-8 bg-white rounded-lg shadow-md max-w-md">
-          <h1 className="text-3xl font-bold text-red-600 mb-4">Доступ запрещён</h1>
-          <p className="text-gray-700 mb-6">
-            У вас нет прав для доступа к этой странице.
-          </p>
-          <button
-            onClick={() => (window.location.href = '/')}
-            className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            Вернуться на главную
+      <div className="flex min-h-screen items-center justify-center bg-surface p-6">
+        <div className="card max-w-md p-8 text-center">
+          <h1 className="text-[28px] font-bold tracking-tighter2 text-ink">Доступ запрещён</h1>
+          <p className="mt-3 text-muted">У вас нет прав для доступа к этой странице.</p>
+          <button type="button" onClick={() => (window.location.href = '/')} className="btn-primary mt-6">
+            На главную
           </button>
         </div>
       </div>
