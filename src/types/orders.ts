@@ -122,11 +122,16 @@ export interface StudioRoomOption {
 /**
  * Запрос на создание заказа — соответствует OrderCreate бэкенда.
  * Бэкенд ожидает время в ISO 8601 с часовым поясом.
+ *
+ * Ресурс указывается универсальной парой resource_type/resource_id:
+ * старые поля photographer_id/studio_room_id в запросе больше не
+ * принимаются. order_type не передаётся — тип выводит сервер.
  */
 export interface CreateOrderPayload {
-  order_type: 'studio_only';
   items: Array<{
-    studio_room_id: number;
+    resource_type: 'studio_room' | 'photographer';
+    resource_id: number;
+    service_id?: number;
     start_time: string;
     end_time: string;
   }>;

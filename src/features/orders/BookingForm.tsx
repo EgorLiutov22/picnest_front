@@ -5,7 +5,7 @@ import toast from 'react-hot-toast';
 import { format } from 'date-fns';
 import apiClient from '../../lib/axios';
 import { getApiErrorMessage } from '../../lib/apiError';
-import type { StudioRoomOption, BookingFormValues } from '../../types/orders';
+import type { StudioRoomOption, BookingFormValues, CreateOrderPayload } from '../../types/orders';
 
 interface BookingFormProps {
   availableRooms: StudioRoomOption[];
@@ -55,22 +55,25 @@ export const BookingForm: React.FC<BookingFormProps> = ({ availableRooms, defaul
 
   const createOrder = useMutation({
     mutationFn: async (data: BookingFormValues) => {
-      // Бэкенд ожидает ISO 8601 с часовым поясом
+      // new Date('2026-12-01T10:00:00') парсится как локальное время,
+      // toISOString() переводит его в UTC — бэкенд хранит tstzrange.
       const start = new Date(`${data.booking_date}T${data.start_time}:00`);
       const end = new Date(`${data.booking_date}T${data.end_time}:00`);
 
-      const response = await apiClient.post('/orders', {
-        order_type: 'studio_only' as const,
+      const payload: CreateOrderPayload = {
         items: [
           {
-            studio_room_id: Number(data.studio_room_id),
+            resource_type: 'studio_room',
+            resource_id: Number(data.studio_room_id),
             start_time: start.toISOString(),
             end_time: end.toISOString(),
           },
         ],
         prepayment_amount: data.prepayment_amount || '0.00',
         cancellation_conditions: {},
-      });
+      };
+
+      const response = await apiClient.post('/orders', payload);
       return response.data;
     },
     onSuccess: () => {
